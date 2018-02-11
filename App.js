@@ -1,11 +1,11 @@
 import React from 'react';
 import MapView, { Marker } from 'react-native-maps';
-import { StyleSheet, Text, View, Button } from 'react-native';
+import { StyleSheet, Text, View, Button, AlertIOS } from 'react-native';
 
 import PositionDetails from './components/PositionDetails';
 
 
-const positionOptions = { enableHighAccuracy: true, maximumAge: 1000 };
+const positionOptions = { enableHighAccuracy: true, distanceFilter: 10, maximumAge: 1000 };
 
 export default class App extends React.Component {
   constructor(props) {
@@ -18,7 +18,22 @@ export default class App extends React.Component {
       heading: -1,
       accuracy: 0,
       lastCapture: '',
+      cachedLatLong: [],
     };
+  }
+
+  handlePositionError(error) {
+    AlertIOS.alert(
+      'Position Error',
+      error.message,
+      [
+        {
+          text: 'Ok',
+          onPress: () => {},
+          style: 'cancel',
+        },
+      ]
+    );
   }
 
   componentDidMount() {
@@ -26,34 +41,58 @@ export default class App extends React.Component {
   }
 
   componentWillUnmount() {
-    navigator.geolocation.clearWatch();
+    navigator.geolocation.clearWatch(this.state.watchPositionId);
   }
 
   handleLocationCallback({ coords }) {
     const { latitude, longitude, speed, accuracy } = coords;
+    const lastCapture = new Date().toISOString();
     this.setState({
       latitude,
       longitude,
       speed: speed > 0 ? speed * 2.23694 : 0,
       accuracy,
-      lastCapture: new Date().toISOString(),
+      lastCapture: lastCapture,
+      cachedLatLong: [...this.state.cachedLatLong, { latitude, longitude, speed, accuracy, lastCapture }],
     });
   }
 
   startLocationWatch() {
-    navigator.geolocation.watchPosition(
+    const watchPositionId = navigator.geolocation.watchPosition(
       this.handleLocationCallback.bind(this),
-      null,
+      this.handlePositionError.bind(this),
       positionOptions,
     );
+
+    this.setState({
+      watchPositionId,
+    });
   }
 
   updateLocation() {
     navigator.geolocation.getCurrentPosition(
       this.handleLocationCallback.bind(this),
-      null,
+      this.handlePositionError.bind(this),
       positionOptions,
     );
+  }
+
+  logCache() {
+    AlertIOS.alert(
+      'Location History',
+      JSON.stringify(this.state.cachedLatLong),
+      [
+        {
+          text: 'Ok',
+          onPress: () => {},
+          style: 'cancel',
+        },
+      ]
+    );
+
+    this.setState({
+      cachedLatLong: [],
+    });
   }
 
   render() {
@@ -61,23 +100,23 @@ export default class App extends React.Component {
       <View style={detailStyles.container}>
         {
           this.state.latitude !== 0 && <MapView
-            minZoomLevel={15}
             showsUserLocation={true}
             followsUserLocation={true}
             style={styles.map}
-            region={{ ...this.state, ...{ latitudeDelta: 0.0922, longitudeDelta: 0.0421 } }}
             initialRegion={{
-              latitude: this.state.latitude,
-              longitude: this.state.longitude,
+              latitude: 0,
+              longitude: 0,
               latitudeDelta: 0.0922,
               longitudeDelta: 0.0421,
             }}
           />
         }
-
         <PositionDetails {...this.state} />
         <Button title="Force Update" onPress={() => {
           this.updateLocation();
+        }} />
+        <Button title="JsonResult" onPress={() => {
+          this.logCache();
         }} />
       </View>
 
