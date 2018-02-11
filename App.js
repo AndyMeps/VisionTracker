@@ -1,6 +1,9 @@
 import React from 'react';
-import PositionDetails from './components/PositionDetails';
+import MapView, { Marker } from 'react-native-maps';
 import { StyleSheet, Text, View, Button } from 'react-native';
+
+import PositionDetails from './components/PositionDetails';
+
 
 const positionOptions = { enableHighAccuracy: true, maximumAge: 1000 };
 
@@ -18,7 +21,7 @@ export default class App extends React.Component {
     };
   }
 
-  componentWillMount() {
+  componentDidMount() {
     this.startLocationWatch();
   }
 
@@ -55,21 +58,45 @@ export default class App extends React.Component {
 
   render() {
     return (
-      <View style={styles.container}>
+      <View style={detailStyles.container}>
+        {
+          this.state.latitude !== 0 && <MapView
+            minZoomLevel={15}
+            showsUserLocation={true}
+            followsUserLocation={true}
+            style={styles.map}
+            region={{ ...this.state, ...{ latitudeDelta: 0.0922, longitudeDelta: 0.0421 } }}
+            initialRegion={{
+              latitude: this.state.latitude,
+              longitude: this.state.longitude,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          />
+        }
+
         <PositionDetails {...this.state} />
         <Button title="Force Update" onPress={() => {
           this.updateLocation();
         }} />
       </View>
+
     );
   }
 }
 
-const styles = StyleSheet.create({
+
+const detailStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'white',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+  },
+});
+
+const styles = StyleSheet.create({
+  map: {
+    ...StyleSheet.absoluteFillObject,
   },
 });
